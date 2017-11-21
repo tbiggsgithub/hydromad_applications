@@ -1,11 +1,29 @@
 #  Read in PEQ zoo file, try hydromad for Guejito
 library(hydromad)
 
+install.packages("dream", repos="http://hydromad.catchment.org")
+
 outdir = "G:/mydocuments/SDSU_classes/2017F/780/w12_IHACRES/Rfiles/"
 fname = "Guejito.PEQout.csv"
 
 xin = read.zoo(paste0(outdir,fname))
 xyplot(xin,with.P=TRUE)
+
+# Second way to load the data directly from github
+xin = read.zoo("https://raw.githubusercontent.com/tbiggsgithub/hydromad_applications/master/Guejito.PEQout.csv")
+xyplot(xin,with.P=TRUE)
+
+#  Aggregate to annual values, sanity check
+library(hydroTSM)
+xin.df = as.data.frame(xin)
+dates = as.Date(rownames(xin.df))
+breaks <- seq(from=as.Date("1955-10-01"), to=as.Date("2015-10-01"), by="year")  
+years.breaks = as.numeric(format(breaks,"%Y"))
+labels.wy = years.breaks[2:length(breaks)]  # Take all but the first year in the breaks.  Why?
+xin.wy <- cut(dates, breaks,labels=labels.wy)
+
+xin.annual.wy = aggregate(xin.df,by=list(xin.wy),FUN=sum)
+#  Do the data seem right?
 
 # Choose one 10-year period to calibrate the model.  which year range should you use?
 
@@ -28,8 +46,11 @@ plot(fitx.values,log="y")
 lines(x$Q,col="blue")
 
 #  Run calibrated model on validation period
-xval = window(xin,start=as.Date(c("1955-10-01"),end=as.Date("1965-09-30")))
-fitx.val = update(fitx,newdata=xval)
+# xval = window(xin,start=as.Date(c("1955-10-01"),end=as.Date("1965-09-30")))
+
+tsverif = xin
+tsverif$Q[time(x)] <- NA
+fitx.val <- update(fitx,newdata=tsverif)
 fitx.val
 summary(fitx.val)
 xyplot(fitx.val,log="y")
